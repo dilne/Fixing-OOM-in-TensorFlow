@@ -23,3 +23,30 @@ Some datasets are high resolution and contain dozens of thousands of images, so 
 
 ### (2/2) Transfer Learning
 Then, after training for one chunk of data, we can save the model, load the next chunk of data, reload the model weights, and continue training on the next chunk of data.
+
+## Lessons Learned
+TF functions are retraced when the arguments, such as the value of the Python of NumPy objects change. This is computationally expensive. In the code below, an OOM error will be created because the amount of system RAM and VRAM increases after every time we reload and continue training the network.
+
+```
+lower, upper, X_test, y_test, X_train_split, y_train_split = loadData(lower, upper, data_info)
+results_list = []
+model = define_model()
+model = compile_model(model)
+
+for i in range(runs):
+  if i != 0:
+    print()
+    del model
+    tf.keras.backend.clear_session()
+    gc.collect()
+    model = tf.keras.models.load_model(save_path_h5)
+    lower, upper, X_test, y_test, X_train_split, y_train_split = loadData(lower, upper, data_info)
+    model = compile_model(model)
+  print(f"Run {i+1}/{runs}")
+
+  results = model.fit(X_train_split[i], y_train_split[i], batch_size=2,
+                      epochs=num_epochs, validation_data=(X_test, y_test),
+                      shuffle=True, verbose=1, callbacks=[SaveModelCallback(i)])
+```
+
+To fix this, we need to use a tf.function(). As far as I'm aware, this can only be performed using custom functions. This will be the next step of the notebook.
